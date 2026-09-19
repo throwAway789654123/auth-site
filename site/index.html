@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>StorageState Lab — banc d'essai Playwright</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --border: #d9dee5;
+    --text: #15181d;
+    --muted: #5d6675;
+    --accent: #2f6df6;
+    --accent-text: #ffffff;
+    --danger: #c0392b;
+    --danger-bg: #fdeceb;
+    --ok: #1f7a44;
+    --ok-bg: #e7f5ec;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --surface-2: #1e222b;
+      --border: #2c313c;
+      --text: #e7eaf0;
+      --muted: #9aa4b5;
+      --accent: #5b8dff;
+      --accent-text: #0b1020;
+      --danger: #ff7b6b;
+      --danger-bg: #2c1a18;
+      --ok: #6ede9b;
+      --ok-bg: #14261c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface-2: #1e222b;
+    --border: #2c313c;
+    --text: #e7eaf0;
+    --muted: #9aa4b5;
+    --accent: #5b8dff;
+    --accent-text: #0b1020;
+    --danger: #ff7b6b;
+    --danger-bg: #2c1a18;
+    --ok: #6ede9b;
+    --ok-bg: #14261c;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  header.topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+  }
+  .topbar-inner {
+    max-width: 960px; margin: 0 auto; padding: 12px 16px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  }
+  .brand { font-weight: 700; letter-spacing: -0.01em; }
+  .brand small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; }
+  nav a {
+    display: inline-block; padding: 5px 10px; border-radius: 7px;
+    text-decoration: none; color: var(--text); font-size: 13px;
+    border: 1px solid transparent;
+  }
+  nav a:hover { background: var(--surface-2); }
+  nav a[aria-current="page"] { background: var(--surface-2); border-color: var(--border); font-weight: 600; }
+  .whoami { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .badge {
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--muted); letter-spacing: 0.04em;
+  }
+  .badge.role-admin { color: var(--accent); border-color: var(--accent); }
+  .badge.role-editor { color: var(--ok); border-color: var(--ok); }
+  .badge.role-viewer { color: var(--muted); }
+  main { max-width: 960px; margin: 0 auto; padding: 22px 16px 60px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px; margin-bottom: 18px;
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 { font-size: 16px; margin: 22px 0 8px; }
+  p { margin: 0 0 12px; }
+  p.lead { color: var(--muted); }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  input[type="email"], input[type="password"], select {
+    width: 100%; padding: 9px 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; font-family: inherit;
+  }
+  .field { margin-bottom: 14px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--accent-text);
+  }
+  button.secondary { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+  button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  button:hover { filter: brightness(1.06); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .alert { padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-bottom: 14px; }
+  .alert.error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+  .alert.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 460px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.k { font-family: var(--mono); white-space: nowrap; }
+  td.v { font-family: var(--mono); word-break: break-all; }
+  code, kbd { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .cred { border: 1px solid var(--border); border-radius: 9px; padding: 12px; background: var(--surface-2); }
+  .cred b { display: block; font-size: 13px; }
+  .cred span { font-family: var(--mono); font-size: 12px; color: var(--muted); display: block; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .big { font-size: 42px; font-weight: 800; letter-spacing: -0.04em; margin: 0 0 4px; }
+  footer { max-width: 960px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body data-hydrated="false" data-role="anonymous" data-auth="anonymous">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">StorageState Lab<small>banc d'essai auth multi-rôles</small></div>
+    <nav id="nav" data-testid="nav"></nav>
+    <div class="whoami" id="whoami" data-testid="whoami"></div>
+  </div>
+</header>
+
+<main id="app" data-testid="app"></main>
+
+<footer>
+  Site 100% statique &amp; déterministe — aucune requête réseau. L'« authentification » écrit dans les cookies,
+  le localStorage et (optionnellement) le sessionStorage, pour reproduire les cas réels que <code>storageState</code> doit capturer.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var USERS = {
+    "admin@demo.test":  { password: "Admin123!",  role: "admin",  name: "Alice Admin",  id: "u-001" },
+    "editor@demo.test": { password: "Editor123!", role: "editor", name: "Edgar Editor", id: "u-002" },
+    "viewer@demo.test": { password: "Viewer123!", role: "viewer", name: "Vera Viewer",  id: "u-003" }
+  };
+
+  var LS_KEY = "sst.session";
+  var SS_KEY = "sst.session";
+  var COOKIE_SESSION = "sst_session";
+  var COOKIE_ROLE = "sst_role";
+
+  var ROUTES = {
+    "/public":    { title: "Page publique",      roles: null,                          nav: "Public" },
+    "/login":     { title: "Connexion",          roles: null,                          nav: "Login" },
+    "/dashboard": { title: "Tableau de bord",    roles: ["admin", "editor", "viewer"], nav: "Dashboard" },
+    "/reports":   { title: "Rapports",           roles: ["admin", "editor"],           nav: "Rapports" },
+    "/admin":     { title: "Administration",     roles: ["admin"],                     nav: "Admin" },
+    "/profile":   { title: "Profil",             roles: ["admin", "editor", "viewer"], nav: "Profil" },
+    "/session":   { title: "Inspecteur de session", roles: null,                       nav: "Inspecteur" }
+  };
+
+  /* ---------- stockage bas niveau (tolérant aux erreurs) ---------- */
+
+  function safeGet(store, key) {
+    try { return store.getItem(key); } catch (e) { return null; }
+  }
+  function safeSet(store, key, value) {
+    try { store.setItem(key, value); return true; } catch (e) { return false; }
+  }
+  function safeRemove(store, key) {
+    try { store.removeItem(key); } catch (e) {}
+  }
+  function setCookie(name, value, maxAgeSeconds) {
+    try {
+      document.cookie = name + "=" + encodeURIComponent(value) +
+        "; path=/; max-age=" + Math.max(0, Math.floor(maxAgeSeconds)) + "; SameSite=Lax";
+      return true;
+    } catch (e) { return false; }
+  }
+  function delCookie(name) {
+    try { document.cookie = name + "=; path=/; max-age=0; SameSite=Lax"; } catch (e) {}
+  }
+  function readCookies() {
+    var out = {};
+    var raw = "";
+    try { raw = document.cookie || ""; } catch (e) { return out; }
+    raw.split(";").forEach(function (part) {
+      var p = part.trim();
+      if (!p) return;
+      var i = p.indexOf("=");
+      if (i < 0) { out[p] = ""; return; }
+      out[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1));
+    });
+    return out;
+  }
+  function cookiesWritable() {
+    var probe = "sst_probe";
+    setCookie(probe, "1", 60);
+    var ok = Object.prototype.hasOwnProperty.call(readCookies(), probe);
+    delCookie(probe);
+    return ok;
+  }
+
+  /* ---------- session ---------- */
+
+  function makeToken(user) {
+    var payload = { sub: user.id, email: user.email, role: user.role, iat: Date.now() };
+    try { return "tok_" + btoa(JSON.stringify(payload)).replace(/=+$/, ""); }
+    catch (e) { return "tok_" + user.id; }
+  }
+
+  function readSession() {
+    var raw = safeGet(window.localStorage, LS_KEY) || safeGet(window.sessionStorage, SS_KEY);
+    if (!raw) return null;
+    var s;
+    try { s = JSON.parse(raw); } catch (e) { return null; }
+    if (!s || !s.role || !s.expiresAt) return null;
+    if (Date.now() > s.expiresAt) return { expired: true, session: s };
+    return { expired: false, session: s };
+  }
+
+  function currentSession() {
+    var r = readSession();
+    return r && !r.expired ? r.session : null;
+  }
+
+  function login(email, password, opts) {
+    var user = USERS[String(email || "").trim().toLowerCase()];
+    if (!user || user.password !== password) return { ok: false, error: "Identifiants invalides." };
+
+    var ttl = opts.ttlSeconds;
+    var session = {
+      userId: user.id,
+      email: String(email).trim().toLowerCase(),
+      name: user.name,
+      role: user.role,
+      token: makeToken({ id: user.id, email: email, role: user.role }),
+      issuedAt: Date.now(),
+      expiresAt: Date.now() + ttl * 1000,
+      persistence: opts.persistence
+    };
+
+    clearSession();
+    var store = opts.persistence === "session" ? window.sessionStorage : window.localStorage;
+    safeSet(store, LS_KEY, JSON.stringify(session));
+    safeSet(window.localStorage, "sst.lastLoginAt", String(session.issuedAt));
+    setCookie(COOKIE_SESSION, session.token, ttl);
+    setCookie(COOKIE_ROLE, session.role, ttl);
+    return { ok: true, session: session };
+  }
+
+  function clearSession() {
+    safeRemove(window.localStorage, LS_KEY);
+    safeRemove(window.sessionStorage, SS_KEY);
+    delCookie(COOKIE_SESSION);
+    delCookie(COOKIE_ROLE);
+  }
+
+  function resetAll() {
+    clearSession();
+    safeRemove(window.localStorage, "sst.lastLoginAt");
+  }
+
+  /* ---------- routage ---------- */
+
+  function parseHash() {
+    var h = window.location.hash.replace(/^#/, "");
+    if (!h) return { path: "/public", query: {} };
+    var qi = h.indexOf("?");
+    var path = qi < 0 ? h : h.slice(0, qi);
+    var query = {};
+    if (qi >= 0) {
+      h.slice(qi + 1).split("&").forEach(function (kv) {
+        if (!kv) return;
+        var i = kv.indexOf("=");
+        var k = i < 0 ? kv : kv.slice(0, i);
+        var v = i < 0 ? "" : decodeURIComponent(kv.slice(i + 1));
+        query[decodeURIComponent(k)] = v;
+      });
+    }
+    if (!ROUTES[path]) path = "/public";
+    return { path: path, query: query };
+  }
+
+  function go(path) { window.location.hash = "#" + path; }
+
+  /* ---------- helpers de rendu ---------- */
+
+  function el(html) {
+    var t = document.createElement("template");
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmt(ts) {
+    if (!ts) return "—";
+    var d = new Date(ts);
+    return d.toISOString().replace("T", " ").slice(0, 19) + "Z";
+  }
+
+  /* ---------- chrome (nav + identité) ---------- */
+
+  function renderChrome(path) {
+    var s = currentSession();
+    var nav = document.getElementById("nav");
+    var html = "";
+    Object.keys(ROUTES).forEach(function (p) {
+      var r = ROUTES[p];
+      if (p === "/login" && s) return;
+      if (r.roles && (!s || r.roles.indexOf(s.role) < 0)) {
+        if (!s) return;
+      }
+      var slug = p.slice(1);
+      html += '<a href="#' + p + '" data-testid="nav-' + slug + '"' +
+              (p === path ? ' aria-current="page"' : "") + ">" + esc(r.nav) + "</a>";
+    });
+    nav.innerHTML = html;
+
+    var who = document.getElementById("whoami");
+    if (s) {
+      who.innerHTML =
+        '<span data-testid="current-user" data-user-email="' + esc(s.email) + '">' + esc(s.name) + "</span>" +
+        '<span class="badge role-' + esc(s.role) + '" data-testid="current-role">' + esc(s.role) + "</span>" +
+        '<button class="secondary" data-testid="logout-button" style="padding:4px 10px;font-size:13px;">Se déconnecter</button>';
+      who.querySelector("[data-testid=logout-button]").addEventListener("click", function () {
+        clearSession();
+        go("/login");
+        render();
+      });
+    } else {
+      who.innerHTML = '<span class="badge" data-testid="current-role">anonyme</span>' +
+                      '<a href="#/login" data-testid="nav-login-cta" style="font-size:13px;">Se connecter</a>';
+    }
+
+    document.body.dataset.role = s ? s.role : "anonymous";
+    document.body.dataset.auth = s ? "authenticated" : "anonymous";
+  }
+
+  /* ---------- pages ---------- */
+
+  function pagePublic() {
+    return el(
+      '<div data-testid="page-public">' +
+      '<div class="card">' +
+      "<h1>Page publique</h1>" +
+      '<p class="lead">Accessible sans session. Utile pour vérifier qu\'un contexte <em>sans</em> <code>storageState</code> ' +
+      "n'est bien pas authentifié.</p>" +
+      "<h2>Comptes de test</h2>" +
+      '<div class="grid">' +
+      Object.keys(USERS).map(function (email) {
+        var u = USERS[email];
+        return '<div class="cred" data-testid="cred-' + u.role + '">' +
+               "<b>" + esc(u.role) + "</b>" +
+               "<span>" + esc(email) + "</span>" +
+               "<span>" + esc(u.password) + "</span></div>";
+      }).join("") +
+      "</div>" +
+      "<h2>Matrice d'accès</h2>" +
+      '<div class="table-wrap"><table data-testid="access-matrix"><thead><tr>' +
+      "<th>Route</th><th>admin</th><th>editor</th><th>viewer</th><th>anonyme</th>" +
+      "</tr></thead><tbody>" +
+      Object.keys(ROUTES).map(function (p) {
+        var roles = ROUTES[p].roles;
+        function cell(r) { return "<td>" + (!roles ? "✅" : roles.indexOf(r) >= 0 ? "✅" : "⛔") + "</td>"; }
+        return "<tr><td class=\"k\">#" + esc(p) + "</td>" + cell("admin") + cell("editor") + cell("viewer") +
+               "<td>" + (roles ? "⛔" : "✅") + "</td></tr>";
+      }).join("") +
+      "</tbody></table></div>" +
+      "</div></div>"
+    );
+  }
+
+  function pageLogin(query) {
+    var next = query.next || "/dashboard";
+    var node = el(
+      '<div data-testid="page-login"><div class="card" style="max-width:460px;">' +
+      "<h1>Connexion</h1>" +
+      '<p class="lead">Redirection après succès vers <code data-testid="login-next">' + esc(next) + "</code>.</p>" +
+      '<div id="login-error-slot"></div>' +
+      '<div class="field"><label for="email">E-mail</label>' +
+      '<input id="email" type="email" autocomplete="username" data-testid="login-email" placeholder="admin@demo.test"></div>' +
+      '<div class="field"><label for="password">Mot de passe</label>' +
+      '<input id="password" type="password" autocomplete="current-password" data-testid="login-password"></div>' +
+      '<div class="field"><label for="persistence">Persistance</label>' +
+      '<select id="persistence" data-testid="login-persistence">' +
+      '<option value="local">localStorage (capturé par storageState)</option>' +
+      '<option value="session">sessionStorage (NON capturé)</option>' +
+      "</select></div>" +
+      '<div class="field"><label for="ttl">Durée de la session</label>' +
+      '<select id="ttl" data-testid="login-ttl">' +
+      '<option value="3600">1 heure</option>' +
+      '<option value="86400">24 heures</option>' +
+      '<option value="10">10 secondes (test d\'expiration)</option>' +
+      "</select></div>" +
+      '<div class="row"><button data-testid="login-submit">Se connecter</button>' +
+      '<button class="secondary" data-testid="login-fill-admin" type="button">Remplir admin</button></div>' +
+      "</div></div>"
+    );
+
+    function submit() {
+      var res = login(
+        node.querySelector("#email").value,
+        node.querySelector("#password").value,
+        {
+          persistence: node.querySelector("#persistence").value,
+          ttlSeconds: parseInt(node.querySelector("#ttl").value, 10)
+        }
+      );
+      var slot = node.querySelector("#login-error-slot");
+      if (!res.ok) {
+        slot.innerHTML = '<div class="alert error" data-testid="login-error" role="alert">' + esc(res.error) + "</div>";
+        return;
+      }
+      go(next);
+      render();
+    }
+
+    node.querySelector("[data-testid=login-submit]").addEventListener("click", submit);
+    node.querySelector("[data-testid=login-fill-admin]").addEventListener("click", function () {
+      node.querySelector("#email").value = "admin@demo.test";
+      node.querySelector("#password").value = "Admin123!";
+    });
+    node.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && (e.target.id === "email" || e.target.id === "password")) submit();
+    });
+    return node;
+  }
+
+  function pageDashboard(s) {
+    return el(
+      '<div data-testid="page-dashboard"><div class="card">' +
+      "<h1>Tableau de bord</h1>" +
+      '<p class="lead">Visible par tous les rôles authentifiés.</p>' +
+      '<p>Bienvenue, <b data-testid="dashboard-username">' + esc(s.name) + "</b>.</p>" +
+      '<div class="table-wrap"><table data-testid="session-summary"><tbody>' +
+      "<tr><td class=\"k\">rôle</td><td class=\"v\" data-testid=\"summary-role\">" + esc(s.role) + "</td></tr>" +
+      "<tr><td class=\"k\">e-mail</td><td class=\"v\">" + esc(s.email) + "</td></tr>" +
+      "<tr><td class=\"k\">émise le</td><td class=\"v\">" + fmt(s.issuedAt) + "</td></tr>" +
+      "<tr><td class=\"k\">expire le</td><td class=\"v\" data-testid=\"summary-expiry\">" + fmt(s.expiresAt) + "</td></tr>" +
+      "<tr><td class=\"k\">persistance</td><td class=\"v\" data-testid=\"summary-persistence\">" + esc(s.persistence) + "</td></tr>" +
+      "</tbody></table></div>" +
+      '<h2>Actions disponibles</h2><div class="row">' +
+      '<button class="secondary" data-testid="action-read" data-allowed="true">Lire</button>' +
+      '<button class="secondary" data-testid="action-write" data-allowed="' + (s.role !== "viewer") + '"' +
+        (s.role === "viewer" ? " disabled" : "") + ">Écrire</button>" +
+      '<button class="secondary" data-testid="action-delete" data-allowed="' + (s.role === "admin") + '"' +
+        (s.role !== "admin" ? " disabled" : "") + ">Supprimer</button>" +
+      "</div></div></div>"
+    );
+  }
+
+  function pageReports(s) {
+    return el(
+      '<div data-testid="page-reports"><div class="card">' +
+      "<h1>Rapports</h1>" +
+      '<p class="lead">Réservé à <code>admin</code> et <code>editor</code>.</p>' +
+      '<div class="table-wrap"><table data-testid="reports-table"><thead><tr><th>ID</th><th>Titre</th><th>Statut</th></tr></thead><tbody>' +
+      '<tr><td class="k">R-100</td><td>Trafic hebdomadaire</td><td>publié</td></tr>' +
+      '<tr><td class="k">R-101</td><td>Conversions</td><td>brouillon</td></tr>' +
+      '<tr><td class="k">R-102</td><td>Rétention</td><td>brouillon</td></tr>' +
+      "</tbody></table></div>" +
+      '<p class="muted" data-testid="reports-scope">Portée : ' +
+      (s.role === "admin" ? "tous les espaces" : "votre espace uniquement") + "</p>" +
+      "</div></div>"
+    );
+  }
+
+  function pageAdmin() {
+    return el(
+      '<div data-testid="page-admin"><div class="card">' +
+      "<h1>Administration</h1>" +
+      '<p class="lead">Réservé à <code>admin</code>. La cible idéale pour un test négatif avec le ' +
+      "<code>storageState</code> d'un viewer.</p>" +
+      '<div class="table-wrap"><table data-testid="users-table"><thead><tr><th>ID</th><th>Nom</th><th>E-mail</th><th>Rôle</th></tr></thead><tbody>' +
+      Object.keys(USERS).map(function (email) {
+        var u = USERS[email];
+        return '<tr data-testid="user-row-' + esc(u.role) + '"><td class="k">' + esc(u.id) + "</td><td>" +
+               esc(u.name) + '</td><td class="v">' + esc(email) + "</td><td>" + esc(u.role) + "</td></tr>";
+      }).join("") +
+      "</tbody></table></div>" +
+      '<div class="row" style="margin-top:14px;">' +
+      '<button class="danger" data-testid="admin-danger-button">Purger le cache</button></div>' +
+      "</div></div>"
+    );
+  }
+
+  function pageProfile(s) {
+    return el(
+      '<div data-testid="page-profile"><div class="card">' +
+      "<h1>Profil</h1>" +
+      '<div class="table-wrap"><table data-testid="profile-table"><tbody>' +
+      '<tr><td class="k">id</td><td class="v" data-testid="profile-id">' + esc(s.userId) + "</td></tr>" +
+      '<tr><td class="k">nom</td><td class="v" data-testid="profile-name">' + esc(s.name) + "</td></tr>" +
+      '<tr><td class="k">email</td><td class="v" data-testid="profile-email">' + esc(s.email) + "</td></tr>" +
+      '<tr><td class="k">role</td><td class="v" data-testid="profile-role">' + esc(s.role) + "</td></tr>" +
+      '<tr><td class="k">token</td><td class="v" data-testid="profile-token">' + esc(s.token) + "</td></tr>" +
+      "</tbody></table></div></div></div>"
+    );
+  }
+
+  function storageRows(store) {
+    var rows = [];
+    try {
+      for (var i = 0; i < store.length; i++) {
+        var k = store.key(i);
+        rows.push([k, store.getItem(k)]);
+      }
+    } catch (e) { /* stockage indisponible */ }
+    return rows;
+  }
+
+  function pageSession() {
+    var node = el('<div data-testid="page-session"><div class="card"></div></div>');
+    var card = node.querySelector(".card");
+
+    function paint() {
+      var r = readSession();
+      var s = r && !r.expired ? r.session : null;
+      var cookies = readCookies();
+      var writable = cookiesWritable();
+
+      function tbl(testid, rows, emptyLabel) {
+        if (!rows.length) {
+          return '<p class="muted" data-testid="' + testid + '-empty">' + esc(emptyLabel) + "</p>";
+        }
+        return '<div class="table-wrap"><table data-testid="' + testid + '"><thead><tr><th>Clé</th><th>Valeur</th></tr></thead><tbody>' +
+          rows.map(function (kv) {
+            return '<tr data-key="' + esc(kv[0]) + '"><td class="k">' + esc(kv[0]) +
+                   '</td><td class="v">' + esc(kv[1]) + "</td></tr>";
+          }).join("") + "</tbody></table></div>";
+      }
+
+      card.innerHTML =
+        "<h1>Inspecteur de session</h1>" +
+        '<p class="lead">Accessible sans authentification : c\'est la page à ouvrir pour vérifier ce qu\'un ' +
+        "<code>storageState</code> a réellement restauré.</p>" +
+        '<p class="big" data-testid="auth-state">' + (s ? "AUTHENTIFIÉ" : "ANONYME") + "</p>" +
+        (r && r.expired
+          ? '<div class="alert error" data-testid="session-expired">Session expirée (' + fmt(r.session.expiresAt) + "). Le storageState est périmé.</div>"
+          : "") +
+        (writable ? "" : '<div class="alert error" data-testid="cookies-blocked">Les cookies ne sont pas inscriptibles dans ce contexte : ouvre la page dans un onglet de premier niveau.</div>') +
+        "<h2>Cookies</h2>" +
+        tbl("cookies-table", Object.keys(cookies).map(function (k) { return [k, cookies[k]]; }), "Aucun cookie.") +
+        "<h2>localStorage <span class=\"badge\">capturé</span></h2>" +
+        tbl("localstorage-table", storageRows(window.localStorage), "localStorage vide.") +
+        "<h2>sessionStorage <span class=\"badge\">non capturé</span></h2>" +
+        tbl("sessionstorage-table", storageRows(window.sessionStorage), "sessionStorage vide.") +
+        '<div class="row" style="margin-top:18px;">' +
+        '<button class="secondary" data-testid="inspector-refresh">Rafraîchir</button>' +
+        '<button class="danger" data-testid="inspector-reset">Tout réinitialiser</button></div>';
+
+      card.querySelector("[data-testid=inspector-refresh]").addEventListener("click", paint);
+      card.querySelector("[data-testid=inspector-reset]").addEventListener("click", function () {
+        resetAll();
+        renderChrome(parseHash().path);
+        paint();
+      });
+    }
+
+    paint();
+    return node;
+  }
+
+  function pageForbidden(path, s) {
+    var need = (ROUTES[path].roles || []).join(", ");
+    return el(
+      '<div data-testid="page-forbidden"><div class="card">' +
+      '<p class="big" data-testid="forbidden-code">403</p>' +
+      "<h1>Accès refusé</h1>" +
+      '<p class="lead">La route <code data-testid="forbidden-path">#' + esc(path) + "</code> exige le rôle " +
+      '<b data-testid="forbidden-required">' + esc(need) + '</b>, or ta session porte le rôle ' +
+      '<b data-testid="forbidden-actual">' + esc(s.role) + "</b>.</p>" +
+      '<a href="#/dashboard" data-testid="forbidden-back">Retour au tableau de bord</a>' +
+      "</div></div>"
+    );
+  }
+
+  /* ---------- boucle de rendu ---------- */
+
+  function render() {
+    var parsed = parseHash();
+    var path = parsed.path;
+    var route = ROUTES[path];
+    var s = currentSession();
+    var app = document.getElementById("app");
+
+    if (route.roles && !s) {
+      go("/login?next=" + encodeURIComponent(path));
+      return;
+    }
+
+    renderChrome(path);
+    app.innerHTML = "";
+    document.title = route.title + " — StorageState Lab";
+
+    var view;
+    if (route.roles && route.roles.indexOf(s.role) < 0) {
+      view = pageForbidden(path, s);
+    } else if (path === "/public") { view = pagePublic(); }
+    else if (path === "/login") { view = s ? (go("/dashboard"), null) : pageLogin(parsed.query); }
+    else if (path === "/dashboard") { view = pageDashboard(s); }
+    else if (path === "/reports") { view = pageReports(s); }
+    else if (path === "/admin") { view = pageAdmin(); }
+    else if (path === "/profile") { view = pageProfile(s); }
+    else if (path === "/session") { view = pageSession(); }
+
+    if (view) app.appendChild(view);
+    document.body.dataset.route = path;
+    document.body.dataset.hydrated = "true";
+  }
+
+  window.addEventListener("hashchange", render);
+  render();
+})();
+</script>
+</body>
+</html>
